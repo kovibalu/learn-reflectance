@@ -13,11 +13,11 @@ from .krahenbuhl2013.krahenbuhl2013 import DenseCRF
 class IntrinsicSolver(object):
     def __init__(self, input, params, W_ns=None):
         """ Create a new solver with given input, parameters and the nystrom
-        approximation of the comaprision matrix W_ns. Nothing happens until 
+        approximation of the comaprision matrix W_ns. Nothing happens until
         you call ``solve``. """
         if isinstance(params, dict):
             params = IntrinsicParameters.from_dict(params)
-        
+
         self.params = params
         self.input = input
         self.energy = IntrinsicEnergy(self.input, params)
@@ -56,7 +56,7 @@ class IntrinsicSolver(object):
             self.decomposition.stage_num = 2
             if self.params.split_clusters and i == self.params.n_iters - 1:
                 self.split_label_clusters()
-            
+
             self.stage2_smooth_s()
             self.decomposition_history.append(self.decomposition.copy())
 
@@ -125,7 +125,7 @@ class IntrinsicSolver(object):
 
     def stage1_optimize_r(self):
         """ Stage 1: dense CRF optimization """
-        
+
         if self.params.logging:
             t0 = timeit.default_timer()
             print("stage1_optimize_r: compute costs...")
@@ -171,22 +171,22 @@ class IntrinsicSolver(object):
                     same_compatibility[l1,l2]= abs(v1 - v2)
                     darker_compatibility[l1,l2] = max(v1 - v2 + self.params.hinge_offset, 0)
                     brighter_compatibility[l1,l2] = max(v2 - v1 + self.params.hinge_offset, 0)
-            
+
             same_compatibility *= self.params.learned_prior_weight
             darker_compatibility *= self.params.learned_prior_weight
             brighter_compatibility *= self.params.learned_prior_weight
-            
+
             # Unpack W_ns into different blocks: 'same', 'darker', 'brighter'
-            # judgments, and add the pairwise comparison cost for each judgment 
+            # judgments, and add the pairwise comparison cost for each judgment
             # separately. The message passing step requires the evaluation of
-            # of Q <- Q * W, and is efficiently approximated by 
+            # of Q <- Q * W, and is efficiently approximated by
             # Q <- Q * W_1 * W_2 (W1 * W2 is Nystrom approximation of W)
             W_ns_same_1 = self.W_ns[:, ::2].T
             W_ns_same_2 = self.W_ns[:, ::2]
             W_ns_darker_1 = self.W_ns[:, 1::2].T
             W_ns_darker_2 = self.W_ns[:, ::2]
             W_ns_brighter_1 = self.W_ns[:, ::2].T
-            W_ns_brighter_2 = self.W_ns[:, 1::2]            
+            W_ns_brighter_2 = self.W_ns[:, 1::2]
             densecrf.add_comparison_energy_nystrom(
                 np.ascontiguousarray(W_ns_same_1.astype(np.float32).T),
                 np.ascontiguousarray(W_ns_same_2.astype(np.float32).T),
@@ -196,7 +196,7 @@ class IntrinsicSolver(object):
                 np.ascontiguousarray(W_ns_darker_1.astype(np.float32).T),
                 np.ascontiguousarray(W_ns_darker_2.astype(np.float32).T),
                 darker_compatibility.astype(np.float32))
-            
+
             densecrf.add_comparison_energy_nystrom(
                 np.ascontiguousarray(W_ns_brighter_1.astype(np.float32).T),
                 np.ascontiguousarray(W_ns_brighter_2.astype(np.float32).T),
@@ -424,7 +424,16 @@ class IntrinsicSolver(object):
         chromaticities = self.decomposition.chromaticities
 
         # split labels
-        new_labels = measure.label(labels, connectivity=connectivity)
+        # MODIFIED TO WORK WITH PYTHON 2.7
+        from skimage import morphology
+        #new_labels = measure.label(labels, connectivity=connectivity)
+        if connectivity == 1:
+            neighbors = 4
+        elif connectivity == 2:
+            neighbors = 8
+        else:
+            raise ValueError('Unexpected "connectivity": %d' % connectivity)
+        new_labels = morphology.label(labels, neighbors=neighbors)
 
         # map labels
         self.decomposition.labels_nz = new_labels[self.input.mask_nz]

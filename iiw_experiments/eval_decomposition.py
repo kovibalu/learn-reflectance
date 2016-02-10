@@ -6,8 +6,45 @@ from util import *
 from bell2014 import image_util
 from bell2014 import judgements
 
+from progressbar import (AdaptiveETA, Bar, FileTransferSpeed, ProgressBar,
+                         SimpleProgress)
+
+
+def progress_bar(l, show_progress=True):
+    """ Returns an iterator for a list or queryset that renders a progress bar
+    with a countdown timer """
+    if show_progress:
+        return iterator_progress_bar(l)
+    else:
+        return l
+
+
+def progress_bar_widgets(unit='items'):
+    return [
+        SimpleProgress(sep='/'), ' ', Bar(), ' ',
+        FileTransferSpeed(unit=unit), ', ', AdaptiveETA()
+    ]
+
+
+def iterator_progress_bar(iterator, maxval=None):
+    """ Returns an iterator for an iterator that renders a progress bar with a
+    countdown timer """
+
+    if maxval is None:
+        try:
+            maxval = len(iterator)
+        except:
+            return iterator
+
+    if maxval > 0:
+        pbar = ProgressBar(maxval=maxval, widgets=progress_bar_widgets())
+        return pbar(iterator)
+    else:
+        return iterator
+
+
 parser = argparse.ArgumentParser(
-	description="""Run decomposition and evaluation on the test split of 
+	description="""Run decomposition and evaluation on the test split of
 	the Intrinsic Images in the Wild (IIW) dataset""")
 parser.add_argument(
 	'iiw_dir', type=str, help='directory of IIW data')
@@ -30,8 +67,8 @@ feat_net = Net('../net/feat.prototxt', '../net/rref.caffemodel', 1)
 rref_net = Net('../net/rref.prototxt', '../net/rref.caffemodel', 1)
 test_ids = np.load('iiw_test_ids.npy').astype(int)
 
-for t in range(len(test_ids)):
-	print('Decomposing: %d/%d' % (t+1, len(test_ids)))
+for t in progress_bar(range(len(test_ids))):
+	#print('Decomposing: %d/%d' % (t+1, len(test_ids)))
 	id = test_ids[t]
 	image_file = args.iiw_dir + str(id) + '.png'
 	output_r_file = args.output_dir + str(id) + '-r.png'

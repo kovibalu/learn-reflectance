@@ -2,7 +2,9 @@ import os
 import numpy as np
 from scipy.misc import imread, imsave
 from scipy.ndimage import gaussian_filter
-from skimage.filters import denoise_bilateral
+# MODIFIED TO WORK WITH PYTHON 2.7
+from skimage.filter import denoise_bilateral
+#from skimage.filters import denoise_bilateral
 
 # relative luminance for sRGB:
 RGB_TO_Y = np.array([0.2126, 0.7152, 0.0722])
